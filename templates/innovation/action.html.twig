@@ -1,0 +1,19 @@
+<li>
+    <span style="font-weight: {{ action.completed ? 'normal' : 'bold' }};">
+        {{ action.id ~ ' - ' ~ action.player.user.username ~ ' ' ~ action.name }}
+        {% if action.params.card is defined %}
+            ({{ action.params.card|json_encode() }})
+        </span>
+    {% endif %}
+    {% set actionsRoot = action.parent %}
+    {% if actionsRoot.parent == null %}
+        <a href="{{ path('game_action_reset', {'slug': game.boardgame.slug, 'game': game.id, 'action': action.id}) }}">&times;</a>
+    {% endif %}
+    {% if action.children|length > 0 %}
+        <ul>
+            {% for subaction in action.children %}
+                {% include 'innovation/action.html.twig' with {'action': subaction} %}
+            {% endfor %}
+        </ul>
+    {% endif %}
+</li>

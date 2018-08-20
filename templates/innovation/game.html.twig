@@ -1,0 +1,166 @@
+{% extends 'base.html.twig' %}
+
+{% block stylesheets %}{{ parent() }}
+    <link rel="stylesheet" href="{{ asset('css/' ~ game.boardgame.slug ~ '.css') }}">
+    <style>
+        form{
+            border: 1px solid grey;
+            margin-bottom: .5em;
+        }
+        input[type="text"], textarea{
+            width: 100%;
+        }
+    </style>
+{% endblock %}
+
+{% block body %}{{ parent() }}
+    <h1><a href="{{ path('boardgame_index', {'slug': game.boardgame.slug}) }}">{{ game.boardgame.title }}</a></h1>
+    <h2>Partie {{ game.id }}</h2>
+    <div style="width: 80%; float: left;">
+        <div id="ages">
+            <h3>Ages</h3>
+            <ul>
+                {% for age, stack in state.ages %}
+                    <li>age {{ age }} ({{ stack.elements|length }})</li>
+                    {% endfor %}
+            </ul>
+        </div>
+        <div id="dominations">
+            <h3>Dominations</h3>
+            <ul>
+                {% for card in state.dominations.elements %}
+                    <li>{{ card.name }}</li>
+                    {% endfor %}
+            </ul>
+        </div>
+        <div id="resources">
+            <h3>Ressources</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>joueur</th>
+                        <th>pierre</th>
+                        <th>arbre</th>
+                        <th>couronne</th>
+                        <th>ampoule</th>
+                        <th>usine</th>
+                        <th>horloge</th>
+                        <th>age</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for civilization in state.civilizations %}
+                        {% set resources = civilization.countResources %}
+                        <tr>
+                            <td>{{ civilization.player.user.username }}</td>
+                            <td>{{ resources[constant('App\\Model\\Innovation\\Card::RESOURCE_STONE')] }}</td>
+                            <td>{{ resources[constant('App\\Model\\Innovation\\Card::RESOURCE_TREE')] }}</td>
+                            <td>{{ resources[constant('App\\Model\\Innovation\\Card::RESOURCE_CROWN')] }}</td>
+                            <td>{{ resources[constant('App\\Model\\Innovation\\Card::RESOURCE_LAMP')] }}</td>
+                            <td>{{ resources[constant('App\\Model\\Innovation\\Card::RESOURCE_FACTORY')] }}</td>
+                            <td>{{ resources[constant('App\\Model\\Innovation\\Card::RESOURCE_CLOCK')] }}</td>
+                            <td>{{ resources[constant('App\\Model\\Innovation\\Card::RESOURCE_AGE')] }}</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+
+        </div>
+        <div id="civilizations">
+            <h3>Joueurs</h3>
+            {% for civilization in state.civilizations %}
+                <div>
+                    <p>{{ civilization.player.user.username }}</p>
+                    <div class="hand">
+                        <p>Cartes en main</p>
+                        <ul>
+                            {% for card in civilization.hand.elements %}
+                                <li>
+                                    <span class="action-place" data-card="{{ card.name }}">(p)</span>
+                                    <span class="card-name" data-card="{{ card.name }}">{{ card.name }}</span>
+                                    ({{ card.age }})
+                                </li>
+                            {% endfor %}
+                        </ul>
+                    </div>
+                    <div class="influence">
+                        <p>Influence = {{ civilization.countInfluence }}</p>
+                        <ul>
+                            {% for card in civilization.influence.elements %}
+                                <li><span class="card-name" data-card="{{ card.name }}">{{ card.name }}</span></li>
+                                {% endfor %}
+                        </ul>
+                    </div>
+                    <div class="stacks">
+                        <p>piles</p>
+                        {% for color, stack in civilization.stacks %}
+                            <div class="stack">
+                                <p>
+                                    {{ stack.name }}
+                                    ({{ ['n','l','r','t'][stack.getSplay] }})
+                                </p>
+                                <ul>
+                                    {% for card in stack.elements %}
+                                        <li>
+                                            <span class="action-activate" data-card="{{ card.name }}">(a)</span>
+                                            <span class="card-name" data-card="{{ card.name }}">{{ card.name }}</span>
+                                        </li>
+                                        {% endfor %}
+                                </ul>
+                            </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+
+        <h2>Actions en attente</h2>
+        {% for form in forms %}
+            <div>
+                {{ form_start(form) }}
+                {{ form_widget(form) }}
+                <button>Envoyer</button>
+                {{ form_end(form) }}
+            </div>
+        {% endfor %}
+    </div>
+    <div style="width: 19%; float: left;">
+        <h3>Journal</h3>
+        <ul>
+            {% for line in state.history %}
+                {% if not line.debug %}
+                    <li>{{ line.content }}</li>
+                    {% endif %}
+                {% endfor %}
+        </ul>
+        <h3>Actions</h3>
+        <ul>
+            {% for action in game.actionsRoot.children %}
+                {% include 'innovation/action.html.twig' %}
+            {% endfor %}
+        </ul>
+    </div>
+
+{% endblock %}
+
+{% block javascripts %}{{ parent() }}
+    <script src="{{ asset('js/jquery-3.2.1.min.js') }}"></script>
+    <script>
+        $(function(){
+            $('.action-place').on('click', function(){
+                let card = $(this).data('card');
+                $('select').first().val('place');
+                $('input').first().val('{"card":"' + card + '"}');
+            });
+            $('.action-activate').on('click', function(){
+                let card = $(this).data('card');
+                $('select').first().val('activate');
+                $('input').first().val('{"card":"' + card + '"}');
+            });
+            $('.card-name').on('click', function(){
+                let card = $(this).data('card');
+                $('input').first().val('{"card":"' + card + '"}');
+            });
+        });
+    </script>
+{% endblock %}

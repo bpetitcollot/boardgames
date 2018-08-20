@@ -1,0 +1,40 @@
+boardgames_index:
+    path: /boardgames
+    controller: App\Controller\BoardgamesController::index
+boardgame_index:
+    path: /boardgames/{slug}
+    controller: App\Controller\BoardgamesController::boardgame
+    requirements:
+        slug: (\w|-)+
+        
+game_join:
+    path: /boardgames/game/{game}/join
+    controller: App\Controller\BoardgamesController::joinGame
+    requirements:
+        game: \d+
+game_leave:
+    path: /boardgames/game/{game}/leave
+    controller: App\Controller\BoardgamesController::leaveGame
+    requirements:
+        game: \d+
+game_reinit:
+    path: /boardgames/game/{game}/reinitialiser
+    controller: App\Controller\BoardgamesController::reinitGame
+    requirements:
+        game: \d+
+game_show:
+    path: /boardgames/{slug}/{game}
+    controller: App\Controller\BoardgamesController::showGame
+    requirements:
+        slug: (\w|-)+
+        game: \d+
+game_action_reset:
+    path: /boardgames/{slug}/{game}/action/{action}/reset
+    controller: App\Controller\BoardgamesController::resetAction
+    requirements:
+        slug: (\w|-)+
+        game: \d+
+        action: \d+
+
+fos_user:
+    resource: "@FOSUserBundle/Resources/config/routing/all.xml"

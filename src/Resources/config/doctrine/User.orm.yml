@@ -1,0 +1,9 @@
+App\Entity\User:
+    type: entity
+    repositoryClass: App\Repository\UserRepository
+    id:
+        id:
+            type: integer
+            generator:
+                strategy: AUTO
+                

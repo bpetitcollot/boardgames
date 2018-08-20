@@ -1,0 +1,19 @@
+App\Entity\Boardgame:
+    type: entity
+    repositoryClass: App\Repository\BoardgameRepository
+    id:
+        id:
+            type: integer
+            generator:
+                strategy: AUTO
+    fields:
+        title:
+            type: string
+            length: 255
+        slug:
+            type: string
+            length: 255
+        rulesManager:
+            type: string
+            length: 255
+            

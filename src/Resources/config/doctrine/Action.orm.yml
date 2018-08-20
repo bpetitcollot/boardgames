@@ -1,0 +1,37 @@
+App\Entity\Action:
+    type: entity
+    repositoryClass: App\Repository\ActionRepository
+    id:
+        id:
+            type: integer
+            generator:
+                strategy: AUTO
+    fields:
+        name:
+            type: string
+            length: 50
+            nullable: true
+        params:
+            type: array
+        required:
+            type: boolean
+        declined:
+            type: boolean
+        completed:
+            type: boolean
+        choices:
+            type: array
+        extraDatas:
+            type: array
+    manyToOne:
+        player:
+            targetEntity: App\Entity\Player
+        parent:
+            targetEntity: App\Entity\Action
+            inversedBy: children
+    oneToMany:
+        children:
+            targetEntity: App\Entity\Action
+            mappedBy: parent
+            cascade: ['all']
+            orphanRemoval: true

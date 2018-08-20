@@ -1,0 +1,29 @@
+body{
+    font-family:sans;
+    font-size: 11px;
+}
+
+#ages ul{
+    padding: 0;
+}
+#ages ul li{
+    display: inline-block;
+    list-style-type: none;
+    margin-left: 1em;
+}
+
+#dominations ul{
+    padding: 0;
+}
+#dominations ul li{
+    display: inline-block;
+    list-style-type: none;
+    margin-left: 1em;
+}
+
+.hand, .influence, .stacks, .stack{
+    display: inline-block;
+    margin-left: 1em;
+    border: 1px solid grey;
+    padding: 0 1em;
+}

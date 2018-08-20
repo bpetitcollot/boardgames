@@ -1,0 +1,19 @@
+App\Entity\Player:
+    type: entity
+    repositoryClass: App\Repository\PlayerRepository
+    id:
+        id:
+            type: integer
+            generator:
+                strategy: AUTO
+    fields:
+        color:
+            type: string
+            length: 10
+    manyToOne:
+        game:
+            targetEntity: App\Entity\Game
+            inversedBy: players
+        user:
+            targetEntity: App\Entity\User
+            

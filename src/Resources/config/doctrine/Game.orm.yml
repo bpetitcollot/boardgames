@@ -1,0 +1,28 @@
+App\Entity\Game:
+    type: entity
+    repositoryClass: App\Repository\GameRepository
+    id:
+        id:
+            type: integer
+            generator:
+                strategy: AUTO
+    fields:
+        title:
+            type: string
+            length: 255
+        params:
+            type: array
+        extensions:
+            type: array
+    oneToOne:
+        actionsRoot:
+            targetEntity: App\Entity\Action
+            cascade: ['all']
+    manyToOne:
+        boardgame:
+            targetEntity: App\Entity\Boardgame
+    oneToMany:
+        players:
+            targetEntity: App\Entity\Player
+            mappedBy: game
+            cascade: ['all']
