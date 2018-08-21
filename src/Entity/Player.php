@@ -6,10 +6,10 @@ class Player
 {
     const COLORS = array('blue', 'green', 'red', 'purple', 'grey');
     
-    private $id;
-    private $game;
-    private $user;
-    private $color;
+    protected $id;
+    protected $game;
+    protected $user;
+    protected $color;
     
     public function getId()
     {
