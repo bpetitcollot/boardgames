@@ -29,16 +29,16 @@ class State
     const ACTION_PARAM_NO_DECLINE = 'noDecline';
 
 // components containers
-    private $cards;
-    private $ages;
-    private $dominations;
-    private $civilizations;
+    protected $cards;
+    protected $ages;
+    protected $dominations;
+    protected $civilizations;
 // datas
-    private $bonusCoop;
-    private $activationDatas;
-    private $actionDeclined;
-    private $history;
-    private $gameOver;
+    protected $bonusCoop;
+    protected $activationDatas;
+    protected $actionDeclined;
+    protected $history;
+    protected $gameOver;
 
     public function __construct()
     {
