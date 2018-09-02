@@ -228,6 +228,13 @@ class Civilization implements MetaPlayerInterface
     {
         $this->recycled[] = $card;
     }
+    
+    public function countAgesRecycled()
+    {
+        return count(array_count_values(array_map(function($card){
+            return $card->getAge();
+        }, $this->recycled)));
+    }
 
     public function __toString()
     {
