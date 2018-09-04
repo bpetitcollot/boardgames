@@ -215,6 +215,11 @@ class State
         return $this->activationDatas['recycled'][count($this->activationDatas['recycled']) - 1];
     }
 
+    public function getLastDrawn()
+    {
+        return $this->activationDatas['drawn'][count($this->activationDatas['drawn']) - 1];
+    }
+
     public function createAction(Player $player, $actionName, $choices = array())
     {
         if (!array_key_exists('name', $choices))
@@ -297,6 +302,10 @@ class State
             return $this->getPlayerCivilization($action->getPlayer())->sufferedSupremacy() === $condition['sufferedSupremacy'];
         elseif (array_key_exists('transfered', $condition))
             return (count($this->activationDatas['transfered']) > 0) === $condition['transfered'];
+        elseif (array_key_exists('lastCardDrawnHasResource', $condition))
+            return $this->getLastDrawn() !== null && $this->getLastDrawn()->hasResource($condition['lastCardDrawnHasResource']);
+        elseif (array_key_exists('lastCardDrawnHasNotResource', $condition))
+            return $this->getLastDrawn() !== null && !$this->getLastDrawn()->hasResource($condition['lastCardDrawnHasResource']);
         else
             return false;
     }
@@ -529,6 +538,17 @@ class State
         return $age;
     }
 
+    // Civilization choices
+    
+    public function civHavingLessInfluence(Civilization $civilization)
+    {
+        return array_map(function($civ){
+            return $civ->getId();
+        }, array_filter($this->civilizations, function($civ) use ($civilization){
+            return $civ !== $civilization && $civ->countInfluence() < $civilization->countInfluence();
+        }));
+    }
+    
 ////////////////////////
 
     public function change(Civilization $civilization)
@@ -550,7 +570,11 @@ class State
         elseif ($age < 1 || $this->ages[$age]->isEmpty())
             return $this->drawInAge($age + 1);
         else
-            return $this->ages[$age]->pickOnTop();
+        {
+            $card = $this->ages[$age]->pickOnTop();
+            $this->activationDatas['drawn'][] = $card;
+            return $card;
+        }
     }
 
     public function drawToHand(Civilization $civilization, $age, $public = false)
@@ -703,6 +727,7 @@ class State
             'card'         => $card->getName(),
             'recycled'     => array(),
             'transfered'   => array(),
+            'drawn'        => array(),
         );
         $this->history[]       = array('debug' => false, 'content' => $civilization . ' activates ' . $card->getName());
         $actions               = call_user_func(array($this, $card->getName()), $civilization);
@@ -1723,7 +1748,40 @@ class State
 
     public function optique(Civilization $civilization)
     {
-         
+        $actions = array();
+        $civs = $this->getUndominatedCivs($civilization, Card::RESOURCE_CROWN);
+        foreach ($civs as $civ) {
+            $actions[] = $this->createAction($civ->getPlayer(), self::ACTION_DRAW_AND_PLACE)
+                ->setRequired(true)
+                ->setExtraDatas(array(
+                    'age' => 3,
+                ))->addChild($this->createAction($civ->getPlayer(), self::ACTION_DRAW_AND_SCORE)
+                    ->setRequired(true)
+                    ->setExtraDatas(array(
+                        'age' => 4,
+                        'conditions' => array(
+                            'lastCardDrawnHasResource' => Card::RESOURCE_CROWN,
+                        ),
+                    )))
+                ->addChild($this->createAction($civ->getPlayer(), self::ACTION_TRANSFER, array(
+                    'card' => array(
+                        'type' => 'callback',
+                        'method' => 'cardFromInfluence',
+                    ),
+                    'civilization' => array(
+                        'type' => 'callback',
+                        'method' => 'civHavingLessInfluence',
+                    ),
+                ))->setRequired(true)
+                    ->setExtraDatas(array(
+                        'target' => 'influence',
+                        'conditions' => array(
+                            'lastCardDrawnHasNotResource' => Card::RESOURCE_CROWN,
+                        ),
+                    )));
+        }
+
+        return $actions;
    }
     
     public function medecine(Civilization $civilization)
