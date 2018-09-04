@@ -143,7 +143,7 @@ class Innovation
         if (count($action->getChoices()) > 0) {
             return array_reduce(array_keys($action->getChoices()), function($carry, $choice) use($action, $state) {
                 return $carry &&
-                    (array_key_exists($choice, $action->getParams()) && $state->validateActionChoice($action->getPlayer(), $action->getParams()[$choice], $action->getChoices()[$choice]) || $choice === 'name' && in_array($action->getName(), $action->getChoices()['name']['choices'])
+                    (array_key_exists($choice, $action->getParams()) && $state->validateActionChoice($action->getPlayer(), $action->getParams()[$choice], $action->getChoices()[$choice], $action->isDeclined()) || $choice === 'name' && in_array($action->getName(), $action->getChoices()['name']['choices'])
                     );
             }, true);
         } else

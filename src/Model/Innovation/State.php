@@ -373,7 +373,9 @@ class State
             if ($choiceName !== 'name')
             {
                 $actualChoice = $this->resolveChoice($action->getPlayer(), $choice);
-                if (count($actualChoice) === 1)
+                if (count($actualChoice) === 0)
+                    $action->decline();
+                if (count($actualChoice) === 1 && $action->isRequired())
                     $action->setParam($choiceName, array_values($actualChoice)[0]);
             }
         }
@@ -383,10 +385,10 @@ class State
 // ACTION VALIDATIONS //
 ////////////////////////
     // Action is valid if player choices are allowed
-    public function validateActionChoice($player, $choice, $choices)
+    public function validateActionChoice($player, $choice, $choices, $declined = false)
     {
         $actualChoices = $this->resolveChoice($player, $choices);
-        return in_array($choice, $actualChoices) || count($actualChoices) === 0;
+        return in_array($choice, $actualChoices) || (count($actualChoices) === 0 && $declined);
     }
 
     public function resolveChoice($player, $choices)
@@ -399,9 +401,6 @@ class State
             $actualChoices = call_user_func_array(array($this, $choices['method']), array($this->getPlayerCivilization($player), $choices['args'] ?? array()));
         else
             throw new \Exception('Unknown choice type.');
-
-        if (count($actualChoices) === 0)
-            $actualChoices = array(null);
 
         return array_values($actualChoices);
     }
@@ -895,6 +894,7 @@ class State
                             'args'   => array('add' => 1),
                         ),
                     ))
+                    ->setRequired(true)
                     ->setExtraDatas(array(
                         State::ACTION_PARAM_NO_DECLINE => true,
             )));
@@ -1721,6 +1721,26 @@ class State
         return $actions;
     }
 
+    public function optique(Civilization $civilization)
+    {
+         
+   }
+    
+    public function medecine(Civilization $civilization)
+    {
+        
+    }
+    
+    public function alchimie(Civilization $civilization)
+    {
+        
+    }
+    
+    public function education(Civilization $civilization)
+    {
+        
+    }
+    
     // AGE 4
     // AGE 5
     // AGE 6
