@@ -14,9 +14,9 @@
 {% endblock %}
 
 {% block body %}{{ parent() }}
-    <h1><a href="{{ path('boardgame_index', {'slug': game.boardgame.slug}) }}">{{ game.boardgame.title }}</a></h1>
-    <h2>Partie {{ game.id }}</h2>
-    <div style="width: 80%; float: left;">
+    <div style="width: 20%; float: left;">
+        <h1><a href="{{ path('boardgame_index', {'slug': game.boardgame.slug}) }}">{{ game.boardgame.title }}</a></h1>
+        <h2>Partie {{ game.id }}</h2>
         <div id="ages">
             <h3>Ages</h3>
             <ul>
@@ -66,6 +66,9 @@
             </table>
 
         </div>
+    </div>
+                
+    <div style="width: 60%; float: left;">
         <div id="civilizations">
             <h3>Joueurs</h3>
             {% for civilization in state.civilizations %}
@@ -87,7 +90,10 @@
                         <p>Influence = {{ civilization.countInfluence }}</p>
                         <ul>
                             {% for card in civilization.influence.elements %}
-                                <li><span class="card-name" data-card="{{ card.name }}">{{ card.name }}</span></li>
+                                <li>
+                                    <span class="card-name" data-card="{{ card.name }}">{{ card.name }}</span>
+                                    ({{ card.age }})
+                                </li>
                                 {% endfor %}
                         </ul>
                     </div>
@@ -124,6 +130,7 @@
             </div>
         {% endfor %}
     </div>
+    
     <div style="width: 19%; float: left;">
         <h3>Journal</h3>
         <ul>

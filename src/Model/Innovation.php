@@ -97,23 +97,23 @@ class Innovation
         if ($state === null)
             $state = $this->getStateBeforeAction($game, $action);
         // validate action
-        // if action is not completed, return  <-------------------------------------
+        // if action is not completed, return  <---------------------------------------------------
         if (!$this->validateAction($action, $state))
             return false;
-        // else execute action                                                      |
-        if (!$action->isRequired() && $action->isDeclined())
+        // else execute action                                                                     |
+        if ($action->isDeclined() && (!$action->isRequired() || !$state->isFeasible($action)))
             $this->removeSubactionsOnDecline($action);
         $action->complete();
         $state->execute($action);
         if ($state->isGameOver()) {
             $game->getActionsRoot()->removeUncompletedSubactions();
         }
-        // move state forward                                                       |
+        // move state forward                                                                      |
         $nextAction = $action->nextAction();
         while ($nextAction !== null && $nextAction->isCompleted()) {
             $state->execute($nextAction);
         }
-        // if state reaches an uncompleted action try to automate it and repeat ____|
+        // if state reaches an uncompleted action try to automate it and repeat ___________________|
         if ($nextAction !== null) {
             $state->autoParam($nextAction);
             $this->handleAction($game, $nextAction, $state);
@@ -128,7 +128,7 @@ class Innovation
 
     public function validateAction(Action $action, State $state)
     {
-        if (!$action->isRequired() && $action->isDeclined())
+        if ($action->isDeclined() && (!$action->isRequired() || !$state->isFeasible($action)))
             return true;
         if ($action->getParent() !== null && $action->getParent()->getParent() === null) {
             if ($action->getName() === State::ACTION_BONUS_COOP)

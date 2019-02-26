@@ -169,4 +169,9 @@ class Card extends Component
     {
         return in_array($resource, $this->getResources());
     }
+    
+    public function __toString()
+    {
+        return $this->name;
+    }
 }
