@@ -167,6 +167,16 @@ class Action
         $this->extraDatas = $extraDatas;
         return $this;
     }
+    
+    public function getExtraData($key)
+    {
+        return array_key_exists($key, $this->extraDatas) ? $this->extraDatas[$key] : null;
+    }
+    
+    public function addExtraData($key, $value)
+    {
+        $this->extraDatas[$key] = $value;
+    }
 
     public function getUncompletedSubactions()
     {

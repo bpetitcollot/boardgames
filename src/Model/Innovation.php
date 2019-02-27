@@ -101,7 +101,7 @@ class Innovation
         if (!$this->validateAction($action, $state))
             return false;
         // else execute action                                                                     |
-        if ($action->isDeclined() && (!$action->isRequired() || !$state->isFeasible($action)))
+        if ($action->isDeclined())
             $this->removeSubactionsOnDecline($action);
         $action->complete();
         $state->execute($action);
@@ -128,7 +128,7 @@ class Innovation
 
     public function validateAction(Action $action, State $state)
     {
-        if ($action->isDeclined() && (!$action->isRequired() || !$state->isFeasible($action)))
+        if ($action->isDeclined() && (!$action->isRequired() || $action->getExtraData('autoCancelled') === true))
             return true;
         if ($action->getParent() !== null && $action->getParent()->getParent() === null) {
             if ($action->getName() === State::ACTION_BONUS_COOP)

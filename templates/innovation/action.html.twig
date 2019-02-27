@@ -1,6 +1,6 @@
 <li>
     <span style="font-weight: {{ action.completed ? 'normal' : 'bold' }};">
-        {{ action.id ~ ' - ' ~ action.player.user.username ~ ' ' ~ action.name }}
+        {{ action.id }} - {{ action.player.user.username }} {{ action.name }} {{ action.required ? '!' : '' }}
         {% if action.params.card is defined %}
             ({{ action.params.card|json_encode() }})
         </span>

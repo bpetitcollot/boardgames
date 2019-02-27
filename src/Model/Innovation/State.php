@@ -29,8 +29,10 @@ class State
     const ACTION_TRANSFER         = 'transfer';
     const ACTION_TRANSFER_CARD_TO = 'transferCardTo';
     const ACTION_ACCEPT           = 'accept';
+    const ACTION_EXCHANGE_START   = 'startExchange';
     const ACTION_EXCHANGE_1       = 'exchange1';
     const ACTION_EXCHANGE_2       = 'exchange2';
+    const ACTION_EXCHANGE_COMMIT  = 'commitExchange';
     const ACTION_MONNAIE_2        = 'monnaie2';
     const ACTION_PAPIER_2         = 'papier2';
     const ACTION_OPTIQUE_2        = 'optique2';
@@ -45,6 +47,7 @@ class State
     protected $dominations;
     protected $civilizations;
     protected $selectedCard;
+    protected $exchange;
 // datas
     protected $bonusCoop;
     protected $activationDatas;
@@ -79,6 +82,7 @@ class State
         $this->gameOver        = false;
         $this->history         = array();
         $this->selectedCard    = null;
+        $this->exchange        = array();
     }
 
     public function init($shuffles, $players)
@@ -265,12 +269,12 @@ class State
         {
             if ($action->isCompleted())
             {
-                $this->actionDeclined = ($action->isRequired() && $action->isDeclined());
-                if ($action->isDeclined() && !$action->isRequired())
+                $this->actionDeclined = (!$action->isRequired() && $action->isDeclined());
+                if ($action->isDeclined() && !$action->isRequired() && !$this->getActionParam($action, 'autoCancelled'))
                 {
                     $this->history[] = array('debug' => false, 'content' => $action->getPlayer() . ' declines');
                 }
-                else
+                if (!$action->isDeclined())
                 {
                     $argumentsArray = $this->buildArgumentsArray($action);
                     try
@@ -321,7 +325,7 @@ class State
     public function buildArgumentsArray(Action $action)
     {
         $arguments = array();
-        if (in_array($action->getName(), array(self::ACTION_BONUS_COOP, self::ACTION_DRAW, self::ACTION_TISSAGE_2, self::ACTION_MONNAIE_2, self::ACTION_PAPIER_2)))
+        if (in_array($action->getName(), array(self::ACTION_BONUS_COOP, self::ACTION_DRAW, self::ACTION_TISSAGE_2, self::ACTION_MONNAIE_2, self::ACTION_PAPIER_2, self::ACTION_EXCHANGE_COMMIT)))
             $arguments = array($this->getPlayerCivilization($action->getPlayer()));
         elseif (in_array($action->getName(), array(self::ACTION_PLACE, self::ACTION_ARCHIVE, self::ACTION_ACTIVATE, self::ACTION_RECYCLE, self::ACTION_SCORE)))
             $arguments = array(
@@ -359,28 +363,27 @@ class State
             );
         elseif ($action->getName() === self::ACTION_REPEAT)
             $arguments = array($action);
-        elseif ($action->getName() === self::ACTION_EXCHANGE_1)
+        elseif ($action->getName() === self::ACTION_EXCHANGE_START)
+        {
+            $container1Array = array(
+                'civilization' => $this->getActionParam($action, 'civilization1'),
+                'target'       => $this->getActionParam($action, 'target1'),
+            );
+            $container2Array = array(
+                'civilization' => $this->getActionParam($action, 'civilization2'),
+                'target'       => $this->getActionParam($action, 'target2'),
+            );
+            $arguments       = array(
+                $this->getPlayerCivilization($action->getPlayer()),
+                $this->computeDestination($container1Array, $action),
+                $this->computeDestination($container2Array, $action),
+            );
+        }
+        elseif (in_array($action->getName(), array(self::ACTION_EXCHANGE_1, self::ACTION_EXCHANGE_2)))
             $arguments = array(
                 $this->getPlayerCivilization($action->getPlayer()),
                 $this->getActionParam($action, 'card') ? $this->cards[$this->getActionParam($action, 'card')] : null,
             );
-        elseif ($action->getName() === self::ACTION_EXCHANGE_2)
-        {
-            $originArray      = array(
-                'civilization' => $this->getPlayerCivilization($action->getPlayer())->getId(),
-                'target'       => $this->getActionParam($action, 'origin'),
-            );
-            $destinationArray = array(
-                'civilization' => $this->getActionParam($action, 'civilization'),
-                'target'       => $this->getActionParam($action, 'target'),
-            );
-            $arguments        = array(
-                $this->getPlayerCivilization($action->getPlayer()),
-                $this->computeDestination($originArray, $action),
-                $this->computeDestination($destinationArray, $action),
-                $this->getActionParam($action, 'card') ? $this->cards[$this->getActionParam($action, 'card')] : null,
-            );
-        }
 
         return $arguments;
     }
@@ -424,6 +427,7 @@ class State
         if (!$this->checkConditions($action))
         {
             $action->setDeclined(true);
+            $action->addExtraDatas('autoCancelled', true);
         }
         else
         {
@@ -436,7 +440,10 @@ class State
                     if (count($actualChoice) === 1 && $action->isRequired())
                         $action->setParam($choiceName, array_values($actualChoice)[0]);
                     elseif (count($actualChoice) === 0)
+                    {
                         $action->setDeclined(true);
+                        $action->addExtraData('autoCancelled', true);
+                    }
                 }
             }
         }
@@ -450,14 +457,6 @@ class State
     {
         $actualChoices = $this->resolveChoice($player, $choices);
         return in_array($choice, $actualChoices) || (count($actualChoices) === 0 && $declined);
-    }
-
-    public function isFeasible(Action $action)
-    {
-        return array_reduce(array_keys($action->getChoices()), function($carry, $choice) use ($action)
-        {
-            return $carry && $choice !== 'name' && ($this->resolveChoice($action->getPlayer(), $choice)) > 0;
-        }, true);
     }
 
     public function resolveChoice($player, $choices)
@@ -660,21 +659,23 @@ class State
     }
 
     // Civilization choices
-    
+
     public function civHavingLessInfluence(Civilization $civilization)
     {
-        return array_map(function($civ){
+        return array_map(function($civ)
+        {
             return $civ->getId();
-        }, array_filter($this->civilizations, function($civ) use ($civilization){
-            return $civ !== $civilization && $civ->countInfluence() < $civilization->countInfluence();
-        }));
+        }, array_filter($this->civilizations, function($civ) use ($civilization)
+            {
+                return $civ !== $civilization && $civ->countInfluence() < $civilization->countInfluence();
+            }));
     }
-    
+
 ////////////////////////
 
     public function change(Civilization $civilization)
     {
-        $this->bonusCoop |= ($civilization !== $this->activationDatas['civilization']);
+        $this->bonusCoop |= (array_key_exists('civilization', $this->activationDatas) && $civilization !== $this->activationDatas['civilization']);
         $civilization->sufferSupremacy(true);
     }
 
@@ -692,7 +693,7 @@ class State
             return $this->drawInAge($age + 1);
         else
         {
-            $card = $this->ages[$age]->pickOnTop();
+            $card                             = $this->ages[$age]->pickOnTop();
             $this->activationDatas['drawn'][] = $card;
             return $card;
         }
@@ -943,21 +944,49 @@ class State
             call_user_func(array($this, $callback), $civilization);
     }
 
-    public function exchange1(Civilization $civilization, Card $card = null)
+    public function startExchange(Civilization $civilization, Set $origin1, Set $origin2)
     {
-        $this->selectedCard = $card;
+        $this->exchange = array(
+            1 => array('origin' => $origin1, 'cards' => array()),
+            2 => array('origin' => $origin2, 'cards' => array()),
+        );
     }
 
-    public function exchange2(Civilization $civilization, Set $origin, Set $destination, Card $card = null)
+    public function exchange1(Civilization $civilization, Card $card = null)
     {
         if ($card !== null)
-            $this->moveCard($card, $destination);
-        if ($this->selectedCard !== null)
-            $this->moveCard($this->selectedCard, $origin);
-        $this->change($civilization);
-        $this->change($origin->getOwner());
-        $this->history[]    = array('debug' => false, 'content' => $civilization . ' exchanges ' . ($card ?? 'nothing') . ' (from ' . $origin . ') with ' . ($this->selectedCard ?? 'nothing') . ' (from ' . $destination . ')');
-        $this->selectedCard = null;
+            $this->exchange[1]['cards'][] = $card;
+    }
+
+    public function exchange2(Civilization $civilization, Card $card = null)
+    {
+        if ($card !== null)
+            $this->exchange[2]['cards'][] = $card;
+    }
+
+    public function commitExchange(Civilization $civilization)
+    {
+        if (count($this->exchange[1]['cards']) === 0 && count($this->exchange[2]['cards']) === 0)
+            $this->history[] = array('debug' => false, 'content' => 'Nothing to exchange');
+        else
+        {
+            $container1 = $this->exchange[1]['origin'];
+            $container2 = $this->exchange[2]['origin'];
+            foreach ($this->exchange[1]['cards'] as $card)
+            {
+                $this->moveCard($card, $container2);
+            }
+            foreach ($this->exchange[2]['cards'] as $card)
+            {
+                $this->moveCard($card, $container1);
+            }
+            $this->change($container1->getOwner());
+            $this->change($container2->getOwner());
+            $cardNames1         = count($this->exchange[1]['cards']) > 0 ? implode(', ', $this->exchange[1]['cards']) : 'nothing';
+            $cardNames2         = count($this->exchange[2]['cards']) > 0 ? implode(', ', $this->exchange[2]['cards']) : 'nothing';
+            $this->history[]    = array('debug' => false, 'content' => $civilization . ' exchanges ' . $cardNames1 . ' (from ' . $container1 . ') with ' . $cardNames2 . ' (from ' . $container2 . ')');
+            $this->selectedCard = null;
+        }
     }
 
 //////////////////////
@@ -2023,6 +2052,14 @@ class State
         $civs    = $this->getDominatedCivs($civilization, Card::RESOURCE_TREE);
         foreach ($civs as $civ)
         {
+            $actions[] = $this->createAction($civ->getPlayer(), self::ACTION_EXCHANGE_START)
+                ->setRequired(true)
+                ->setExtraDatas(array(
+                'civilization1' => $civilization->getId(),
+                'target1'       => 'influence',
+                'civilization2' => $civ->getId(),
+                'target2'       => 'influence',
+            ));
             $actions[] = $this->createAction($civilization->getPlayer(), self::ACTION_EXCHANGE_1, array(
                     'card' => array(
                         'type'   => 'callback',
@@ -2031,11 +2068,8 @@ class State
                             'age' => 'lowestAgeInInfluence',
                         ),
                     ),
-                ))->setRequired(true)
-                ->setExtraDatas(array(
-                    'supremacy' => true,
-                ))
-                ->addChild($this->createAction($civ->getPlayer(), self::ACTION_EXCHANGE_2, array(
+                ))->setRequired(true);
+            $actions[] = $this->createAction($civ->getPlayer(), self::ACTION_EXCHANGE_2, array(
                     'card' => array(
                         'type'   => 'callback',
                         'method' => 'cardFromInfluence',
@@ -2043,14 +2077,10 @@ class State
                             'age' => 'highestAgeInInfluence',
                         ),
                     ),
-                ))->setRequired(true)
-                ->setExtraDatas(array(
-                    'supremacy'    => true,
-                    'origin'       => 'influence',
-                    'civilization' => $civilization->getId(),
-                    'target'       => 'influence',
-                ))
-            );
+                ))->setRequired(true);
+            $actions[] = $this->createAction($civ->getPlayer(), self::ACTION_EXCHANGE_COMMIT)
+                ->setRequired(true)
+                ->setExtraDatas(array('supremacy' => true));
         }
 
         return $actions;
@@ -2474,8 +2504,6 @@ class State
         return $actions;
     }
 
-    
-    
     // AGE 6
     // AGE 7
     // AGE 8
