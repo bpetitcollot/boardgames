@@ -16,6 +16,7 @@ class Civilization implements MetaPlayerInterface
     private $scored;
     private $recycled;
     private $drawn;
+    private $splayed;
     
     public function __construct($player)
     {
@@ -36,6 +37,7 @@ class Civilization implements MetaPlayerInterface
         $this->scored = array();
         $this->recycled = array();
         $this->drawn = array();
+        $this->splayed = array();
     }
 
     public function getId()
@@ -227,10 +229,27 @@ class Civilization implements MetaPlayerInterface
         });
     }
     
+    public function getUnderCards($includeEmpty = true)
+    {
+        $cards = array_map(function($stack){
+            return $stack->getBottomElement();
+        }, $this->stacks);
+        
+        return $includeEmpty ? $cards : array_filter($cards, function($card){
+            return $card !== null;
+        });
+    }
+    
     public function getLastArchived()
     {
         $count = count($this->archived);
         return $count > 0 ? $this->archived[$count - 1] : null;
+    }
+    
+    public function getLastScored()
+    {
+        $count = count($this->scored);
+        return $count > 0 ? $this->scored[$count - 1] : null;
     }
     
     public function getLastDrawn()
@@ -264,6 +283,19 @@ class Civilization implements MetaPlayerInterface
     public function draw(Card $card)
     {
         $this->drawn[] = $card;
+    }
+    
+    public function splay($color, $direction)
+    {
+        $this->getStack($color)->splay($direction);
+        $this->splayed[] = array('color' => $color, 'direction' => $direction);
+    }
+    
+    public function countLastStackSplayed()
+    {
+        $count = count($this->splayed);
+        
+        return $count > 0 ? count($this->stacks[$this->splayed[$count-1]['color']]) : 0;
     }
     
     public function countAgesRecycled()
