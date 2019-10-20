@@ -314,6 +314,18 @@ class Civilization implements MetaPlayerInterface
             && $this->drawn[$length - 2]->getColor() !== $this->drawn[$length - 3]->getColor()
         ;
     }
+    
+    public function getArchivedAges()
+    {
+        return count(array_values(array_map(function($card){
+            return $card->getAge();
+        }, $this->archived)));
+    }
+    
+    public function getHandSize()
+    {
+        return $this->getHand()->getSize();
+    }
 
     public function __toString()
     {

@@ -75,16 +75,17 @@ class Stack extends Set
      */
     public function rearrange($arrangement)
     {
+        dump($this->elements, $arrangement);
         $ranks = array_keys($this->elements);
         if (count(array_filter($arrangement, function($value, $key) use($ranks){
             return !in_array($value, $ranks) || !in_array($key, $ranks);
         }, ARRAY_FILTER_USE_BOTH)) > 0)
         throw new \Exception('Unable to rearrange elements.');
-        
         $this->elements = array_map(function($rank){
             return $this->elements[$rank];
         }, array_flip($arrangement));
         ksort($this->elements);
+        dump($this->elements);
     }
     
     public function countResources()

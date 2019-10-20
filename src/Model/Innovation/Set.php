@@ -59,6 +59,18 @@ class Set extends Component implements ContainerInterface
     {
         return $this->elements;
     }
+    
+    public function setElements(array $elements)
+    {
+        $this->elements = $elements;
+        
+        return $this;
+    }
+    
+    public function getSize()
+    {
+        return count($this->elements);
+    }
 
     public function isEmpty()
     {

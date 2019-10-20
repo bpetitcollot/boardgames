@@ -21,18 +21,20 @@ class State
     const ACTION_DRAW_AND_PLACE   = 'drawAndPlace';
     const ACTION_BONUS_COOP       = 'bonusCoop';
     const ACTION_RECYCLE          = 'recycle';
+    const ACTION_RECYCLE_MANY     = 'recycleMany';
     const ACTION_ARCHIVE          = 'archive';
     const ACTION_SCORE            = 'score';
     const ACTION_SPLAY            = 'splay';
     const ACTION_REPEAT           = 'repeat';
-    const ACTION_TISSAGE_2        = 'tissage2';
     const ACTION_TRANSFER         = 'transfer';
-    const ACTION_TRANSFER_CARD_TO = 'transferCardTo';
     const ACTION_ACCEPT           = 'accept';
+    const ACTION_REARRANGE_STACK  = 'rearrangeStack';
+    const ACTION_CHOOSE_OPTION    = 'chooseOption';
     const ACTION_EXCHANGE_START   = 'startExchange';
     const ACTION_EXCHANGE_1       = 'exchange1';
     const ACTION_EXCHANGE_2       = 'exchange2';
     const ACTION_EXCHANGE_COMMIT  = 'commitExchange';
+    const ACTION_TISSAGE_2        = 'tissage2';
     const ACTION_MONNAIE_2        = 'monnaie2';
     const ACTION_PAPIER_2         = 'papier2';
     const ACTION_OPTIQUE_2        = 'optique2';
@@ -42,6 +44,9 @@ class State
     const ACTION_CONSERVES_2      = 'conserves2';
     const ACTION_CLASSIFICATION_2 = 'classification2';
     const ACTION_DEMOCRATIE_2     = 'democratie2';
+    const ACTION_ECLAIRAGE_2      = 'eclairage2';
+    const ACTION_ELECTRICITE_2    = 'electricite2';
+
     const ACTION_PARAM_NO_DECLINE = 'noDecline';
 
 // components containers
@@ -323,6 +328,10 @@ class State
             return (count($this->activationDatas['recycled']) > 0) === $condition['recycled'];
         elseif (array_key_exists('threeLastDrawnOfDifferentColors', $condition))
             return $this->getPlayerCivilization($action->getPlayer())->threeLastDrawOfDifferentColors() === $condition['threeLastDrawnOfDifferentColors'];
+        elseif (array_key_exists('choosenOption', $condition))
+            return $this->activationDatas['choosenOption'] === $condition['choosenOption'];
+        elseif (array_key_exists('handSize', $condition))
+            return $this->getPlayerCivilization($action->getPlayer())->getHandSize() === $condition['handSize'];
         else
             return false;
     }
@@ -341,7 +350,7 @@ class State
                 $this->getActionParam($action, 'age'),
                 $this->getActionParam($action, 'public', false)
             );
-        elseif (in_array($action->getName(), array(self::ACTION_TRANSFER, self::ACTION_TRANSFER_CARD_TO)))
+        elseif ($action->getName() ===self::ACTION_TRANSFER)
         {
             $destinationArray = array(
                 'civilization' => $this->getActionParam($action, 'civilization'),
@@ -387,6 +396,19 @@ class State
                 $this->getPlayerCivilization($action->getPlayer()),
                 $this->getActionParam($action, 'card') ? $this->cards[$this->getActionParam($action, 'card')] : null,
             );
+        elseif ($action->getName() === self::ACTION_REARRANGE_STACK)
+            $arguments = array(
+                $this->getPlayerCivilization($action->getPlayer()),
+                $action->getParams()['color'],
+                $action->getParams()['arrangement'],
+            );
+        elseif ($action->getName() === self::ACTION_CHOOSE_OPTION)
+            $arguments = array(
+                $this->getPlayerCivilization($action->getPlayer()),
+                $action->getParams()['choosenOption'],
+            );
+        elseif ($action->getName() === self::ACTION_RECYCLE_MANY)
+            $arguments = array_map(function($cardName){ return $this->getCard($cardName); }, $action->getParams()['cards']);
 
         return $arguments;
     }
@@ -400,7 +422,7 @@ class State
         elseif (array_key_exists($param, $action->getExtraDatas()))
         {
             $rawData = $action->getExtraDatas()[$param];
-            return is_array($rawData) ? $this->resolveChoice($action->getPlayer(), $rawData) : $rawData;
+            return is_array($rawData) ? $this->resolveChoice($action->getPlayer(), $rawData)[0] : $rawData;
         }
         return $default;
     }
@@ -479,6 +501,24 @@ class State
         return array_values($actualChoices);
     }
 
+    public function validateStackRearrangement(Player $player, $params)
+    {
+        if (!array_key_exists('color', $params) && !array_key_exists('arrangement', $params)) return false;
+        $color = $params['color'];
+        $arrangement = $params['arrangement'];
+        $ranks = array_keys($this->getPlayerCivilization($player)->getStack($color)->getElements());
+        return is_array($arrangement)
+            && count($arrangement) === count($this->getPlayerCivilization($player)->getStack($color)->getElements())
+            && count(array_filter($arrangement, function($value, $key) use($ranks){
+            return !in_array($value, $ranks) || !in_array($key, $ranks);
+        }, ARRAY_FILTER_USE_BOTH)) === 0;
+    }
+    
+    public function validateRecycleMany($recycled, $toRecycle)
+    {
+        return count(array_diff($recycled, $toRecycle)) === 0 && count(array_diff($toRecycle, $recycled)) === 0;
+    }
+    
     // CHOICES RESOLVERS : return an actual array of choices //
     // Card choices
 
@@ -634,6 +674,14 @@ class State
         return array_filter(array_keys($civilization->getStacks()), function($color) use ($civilization)
         {
             return count($civilization->getStack($color)->getElements()) >= 2;
+        });
+    }
+
+    public function colorSplayedRight(Civilization $civilization)
+    {
+        return array_filter(array_keys($civilization->getStacks()), function($color) use ($civilization)
+        {
+            return $civilization->getStack($color)->getSplay() === Stack::SPLAY_RIGHT;
         });
     }
 
@@ -926,6 +974,14 @@ class State
         $this->history[]                     = array('debug' => false, 'content' => $civilization . ' recycles ' . $card->getName());
     }
 
+    public function recycleMany(Civilization $civilization, $cards)
+    {
+        foreach ($cards as $card)
+        {
+            $this->recycle($civilization, $card);
+        }
+    }
+    
     public function moveCard(Card $card, Set $destination)
     {
         if ($destination instanceof Stack)
@@ -948,11 +1004,6 @@ class State
             $this->activationDatas['transfered'][] = $card;
             $this->history[]                       = array('debug' => false, 'content' => $civilization . ' transfers ' . $card->getName() . ' from ' . $origin . ' to ' . $destination);
         }
-    }
-
-    public function transferCardTo(Civilization $civilization, Set $destination, Card $card = null)
-    {
-        return $card !== null ? $this->transfer($civilization, $destination, $card) : null;
     }
 
     public function archive(Civilization $civilization, Card $card)
@@ -1028,6 +1079,26 @@ class State
         }
     }
 
+    public function rearrangeStack(Civilization $civilization, $color, $arrangement)
+    {
+        $stack           = $civilization->getStack($color);
+        $civilization->getStack($color)->rearrange($arrangement);
+        $this->history[] = array('debug' => false, 'content' => $civilization . ' rearranger his ' . $stack);
+    }
+    
+    public function exchangeSets(Civilization $civilization, Set $set1, Set $set2)
+    {
+        $set1Elements = $set1->getElements();
+        $set1->setElements($set2->getElements());
+        $set2->setElements($set1Elements);
+        $this->history[] = array('debug' => false, 'content' => $civilization . ' exchanges ' . $set1.' with '.$set2);
+    }
+    
+    public function chooseOption(Civilization $civilization, $option)
+    {
+        $this->activationDatas['choosenOption'] = $option;
+    }
+    
 //////////////////////
 // CARDS ACTIVATION //
 //////////////////////
@@ -1601,7 +1672,7 @@ class State
                         'method' => 'cardFromHand',
                     ),
                 ))
-                ->addChild($this->createAction($civ->getPlayer(), self::ACTION_TRANSFER_CARD_TO, array(
+                ->addChild($this->createAction($civ->getPlayer(), self::ACTION_TRANSFER, array(
                     'civilization' => array(
                         'type'    => 'choice',
                         'choices' => array_map(function($civ)
@@ -1609,10 +1680,7 @@ class State
                                 return $civ->getId();
                             }, $this->otherCivilizations($civilization)),
                     ),
-                    'target'   => array(
-                        'type'    => 'choice',
-                        'choices' => array('game' => 'game'),
-                    ),
+                    'target'   => 'game',
                 ))->setRequired(true)
                 ->setExtraDatas(array(
                     self::ACTION_PARAM_NO_DECLINE => true,
@@ -2269,7 +2337,10 @@ class State
         foreach ($civs as $civ)
         {
             $actions[] = $this->createAction($civ->getPlayer(), self::ACTION_SPLAY, array(
-                    'color' => array(Card::COLOR_YELLOW, Card::COLOR_PURPLE),
+                    'color' => array(
+                        'type' => 'choice',
+                        'choices' => array(Card::COLOR_YELLOW, Card::COLOR_PURPLE),
+                    ),
                 ))->setExtraDatas(array('direction' => Stack::SPLAY_RIGHT));
         }
 
@@ -2893,6 +2964,10 @@ class State
                         'method' => 'cardFromHand',
                     ),
                 ))->setRequired(true)
+                ->setExtraDatas(array(
+                    'civilization' => $civilization->getId(),
+                    'target' => 'influence',
+                ))
                 ->addChild($this->createAction($civ->getPlayer(), self::ACTION_DRAW_TO_HAND)
                 ->setRequired(true)
                 ->setExtraDatas(array(
@@ -3088,9 +3163,379 @@ class State
 
     // AGE 7
     
+    public function chemin_de_fer(Civilization $civilization)
+    {
+        $actions = array();
+        $civs    = $this->getUndominatedCivs($civilization, Card::RESOURCE_CLOCK);
+        foreach ($civs as $civ)
+        {
+            $actions[] = $this->createAction($civ->getPlayer(), self::ACTION_RECYCLE, array(
+                'card' => array(
+                    'type' => 'callback',
+                    'method' => 'cardFromHand',
+                ),
+            ))->setRequired(true)
+                ->setExtraDatas(array(
+                    'repeat' => true,
+                ))
+                ->addChild($this->createAction($civ->getPlayer(), self::ACTION_REPEAT)
+                    ->setRequired(true)
+                    ->setExtraDatas(array(
+                        self::ACTION_PARAM_NO_DECLINE => true,
+                    ))
+                );
+            for ($i = 1; $i <= 3; $i++){
+                $actions[] = $this->createAction($civ->getPlayer(), self::ACTION_DRAW_TO_HAND)
+                    ->setRequired(true)
+                    ->setExtraDatas(array('age' => 6));
+            }
+        }
+        
+        foreach ($civs as $civ)
+        {
+            $actions[] = $this->createAction($civ->getPlayer(), self::ACTION_SPLAY, array(
+                'color' => array(
+                    'type' => 'callback',
+                    'method' => 'colorSplayedRight',
+                )
+            ))->setExtraDatas(array(
+                'direction' => Stack::SPLAY_TOP,
+            ));
+        }
+
+        return $actions;
+    }
     
+    public function publications(Civilization $civilization)
+    {
+        $actions = array();
+        $civs = $this->getUndominatedCivs($civilization, Card::RESOURCE_LAMP);
+        foreach ($civs as $civ)
+        {
+            $actions[] = $this->createAction($civ->getPlayer(), self::ACTION_REARRANGE_STACK, array(
+                'color' => array(
+                    'type' => 'callback',
+                    'method' => 'colorSplayable',
+                ),
+            ));
+        }
+        
+        foreach ($civs as $civ)
+        {
+            $actions[] = $this->createAction($civ->getPlayer(), self::ACTION_SPLAY, array(
+                'color' => array(
+                    'type' => 'choice',
+                    'choices' => array(Card::COLOR_YELLOW, Card::COLOR_BLUE),
+                )
+            ))->setExtraDatas(array(
+                'direction' => Stack::SPLAY_TOP,
+            ));
+        }
+        
+        return $actions;
+    }
+
+    public function evolution(Civilization $civilization)
+    {
+        $actions = array();
+        $civs = $this->getUndominatedCivs($civilization, Card::RESOURCE_LAMP);
+        foreach ($civs as $civ)
+        {
+            $actions[] = $this->createAction($civ->getPlayer(), self::ACTION_CHOOSE_OPTION, array(
+                'choosenOption' => array(
+                    'type' => 'choice',
+                    'choices' => array('evolution1', 'evolution2'),
+                ),
+            ))->addChild($this->createAction($civ->getPlayer(), self::ACTION_DRAW_AND_SCORE, array(
+                        'age' => 8,
+                    ))->setRequired(true)
+                    ->setExtraDatas(array(
+                        self::ACTION_PARAM_NO_DECLINE => true,
+                        'conditions' => array(array('choosenOption' => 'evolution1')),
+                    ))
+                    ->addChild($this->createAction($civ->getPlayer(), self::ACTION_RECYCLE, array(
+                        'card' => array(
+                            'type' => 'callback',
+                            'method' => 'cardFromInfluence',
+                        )
+                    ))->setRequired(true))
+                )
+                ->addChild($this->createAction($civ->getPlayer(), self::ACTION_DRAW_TO_HAND, array(
+                    'age' => array(
+                        'type' => 'callback',
+                        'method' => 'highestAgeInInfluence',
+                        'args' => array(
+                            'add' => 1,
+                        ),
+                    )
+                ))->setRequired(true)
+                    ->setExtraDatas(array(
+                        self::ACTION_PARAM_NO_DECLINE => true,
+                        'conditions' => array(array('choosenOption' => 'evolution2')),
+                )))
+            ;
+        }
+        
+        return $actions;
+    }
+    
+    public function explosifs(Civlization $civilization)
+    {
+        $actions = array();
+        $civs = $this->getDominatedCivs($civilization, Card::RESOURCE_FACTORY);
+        foreach ($civs as $civ)
+        {
+            for ($i = 1; $i <= 3; $i++)
+            {
+                $actions[] = $this->createAction($civ->getPlayer(), self::ACTION_TRANSFER, array(
+                    'card' => array(
+                        'type' => 'callback',
+                        'method' => 'cardFromHand',
+                    ),
+                ))->setExtraDatas(array(
+                    'supremacy' => true,
+                    'civilization' => $civilization,
+                    'target' => 'hand',
+                ))->setRequired(true)
+                    ->addChild($this->createAction($civ->getPlayer(), self::ACTION_TRANSFER, array(
+                            'card' => array(
+                                'type' => 'callback',
+                                'method' => 'cardFromHand',
+                            ),
+                        ))->setExtraDatas(array(
+                            self::ACTION_PARAM_NO_DECLINE => true,
+                            'supremacy' => true,
+                            'civilization' => $civilization,
+                            'target' => 'hand',
+                        ))->setRequired(true)
+                        ->addChild($this->createAction($civ->getPlayer(), self::ACTION_TRANSFER, array(
+                                'card' => array(
+                                    'type' => 'callback',
+                                    'method' => 'cardFromHand',
+                                ),
+                            ))->setExtraDatas(array(
+                                self::ACTION_PARAM_NO_DECLINE => true,
+                                'supremacy' => true,
+                                'civilization' => $civilization,
+                                'target' => 'hand',
+                        ))->setRequired(true)))
+                    ->addChild($this->createAction($civ->getPlayer(), self::ACTION_DRAW_TO_HAND, array(
+                            'age' => 7,
+                        ))->setRequired(true)
+                        ->setExtraDatas(array(
+                            self::ACTION_PARAM_NO_DECLINE => true,
+                            'supremacy' => true,
+                            'conditions' => array(
+                                array('handSize' => 0),
+                            ),
+                    )))
+                ;
+            }
+        }
+        
+        return $actions;
+    }
+    
+    public function eclairage(Civilization $civilization)
+    {
+        $actions = array();
+        $civs = $this->getUndominatedCivs($civilization, Card::RESOURCE_TREE);
+        foreach ($civs as $civ)
+        {
+            $civ->clearArchived();
+            $actions[] = $this->createAction($civ->getPlayer(), self::ACTION_ARCHIVE, array(
+                'card' => array(
+                    'type' => 'callback',
+                    'method' => 'cardFromHand',
+                ),
+            ))->addChild($this->createAction($civ->getPlayer(), self::ACTION_ARCHIVE, array(
+                    'card' => array(
+                        'type' => 'callback',
+                        'method' => 'cardFromHand',
+                    ),
+                ))->setExtraDatas(array(self::ACTION_PARAM_NO_DECLINE => true))
+                    ->addChild($this->createAction($civ->getPlayer(), self::ACTION_ARCHIVE, array(
+                        'card' => array(
+                            'type' => 'callback',
+                            'method' => 'cardFromHand',
+                        ),
+                    ))->setExtraDatas(array(self::ACTION_PARAM_NO_DECLINE => true))
+                        ->addChild($this->createAction($civ->getPlayer(), self::ACTION_ECLAIRAGE_2)->setRequired(true))
+                )
+            );
+        }
+        
+        return $actions;
+    }
+    
+    public function eclairage2(Civilization $civilization)
+    {
+        for ($i = 1; $i <= $civilization->getArchivedAges(); $i++)
+        {
+            $this->drawAndScore($civilization, 7);
+        }
+    }
+    
+    public function electricite(Civilization $civilization)
+    {
+        $actions = array();
+        $civs = $this->getUndominatedCivs($civilization, Card::RESOURCE_FACTORY);
+        foreach ($civs as $civ)
+        {
+            $civ->clearRecycled();
+            $cards = array_filter($civ->getActiveCards(), function($card){ return $card->hasResource(Card::RESOURCE_FACTORY); });
+            $actions[] = $this->createAction($civ->getPlayer(), self::ACTION_RECYCLE_MANY)
+                ->setRequired(true)
+                ->setExtraDatas(array(
+                    'cards' => $cards,
+                ))->addChild($this->createAction($civ->getPlayer(), self::ACTION_ELECTRICITE_2)->setExtraDatas(array(self::ACTION_PARAM_NO_DECLINE => true)));
+        }
+        
+        return $actions;
+    }
+    
+    public function electricite2(Civilization $civilization)
+    {
+        for ($i = 1; $i <= count($civilization->getRecycled()); $i++)
+        {
+            $this->drawToHand($civilization, 8);
+        }
+    }
+    
+    public function sante_publique(Civilization $civilization)
+    {
+        $actions[] = array();
+        $civs = $this->getDominatedCivs($civilization, Card::RESOURCE_TREE);
+        foreach ($civs as $civ)
+        {
+            $actions[] = $this->createAction($civ->getPlayer(), self::ACTION_EXCHANGE_START)
+                ->setRequired(true)
+                ->setExtraDatas(array(
+                'civilization1' => $civ->getId(),
+                'target1'       => 'hand',
+                'civilization2' => $civilization->getId(),
+                'target2'       => 'hand',
+            ));
+            $actions[] = $this->createAction($civ->getPlayer(), self::ACTION_EXCHANGE_1, array(
+                    'card' => array(
+                        'type'   => 'callback',
+                        'method' => 'cardFromHand',
+                        'args'   => array(
+                            'age' => 'highestAgeInHand',
+                        ),
+                    ),
+                ))->setRequired(true);
+            $actions[] = $this->createAction($civ->getPlayer(), self::ACTION_EXCHANGE_1, array(
+                    'card' => array(
+                        'type'   => 'callback',
+                        'method' => 'cardFromHand',
+                        'args'   => array(
+                            'age' => 'highestAgeInHand',
+                        ),
+                    ),
+                ))->setRequired(true);
+            $actions[] = $this->createAction($civilization->getPlayer(), self::ACTION_EXCHANGE_2, array(
+                    'card' => array(
+                        'type'   => 'callback',
+                        'method' => 'cardFromHand',
+                        'args'   => array(
+                            'age' => 'lowestAgeInHand',
+                        ),
+                    ),
+                ))->setRequired(true);
+            $actions[] = $this->createAction($civ->getPlayer(), self::ACTION_EXCHANGE_COMMIT)
+                ->setRequired(true)
+                ->setExtraDatas(array('supremacy' => true));
+        }
+        
+        return $actions;
+    }
+    
+    public function refrigeration(Civilization $civilization)
+    {
+        $actions = array();
+        $civs = $this->getDominatedCivs($civilization, Card::RESOURCE_TREE);
+        foreach ($civs as $civ)
+        {
+            for ($i = 1; $i <= $civ->getHandSize() / 2; $i++)
+            {
+                $actions[] = $this->createAction($civ->getPlayer(), self::ACTION_RECYCLE, array(
+                    'card' => array(
+                        'type' => 'callback',
+                        'method' => 'cardFromHand',
+                    ),
+                ))->setRequired(true);
+            }
+        }
+        $civs = $this->getUndominatedCivs($civilization, Card::RESOURCE_TREE);
+        foreach ($civs as $civ)
+        {
+            $actions[] = $this->createAction($civ->getPlayer(), self::ACTION_SCORE, array(
+                'card' => array(
+                    'type' => 'callback',
+                    'method' => 'cardFromHand',
+                ),
+            ));
+        }
+        
+        return $actions;
+    }
+    
+    public function bicyclette(Civilization $civilization)
+    {
+        $actions = array();
+        $civs = $this->getUndominatedCivs($civilization, Card::RESOURCE_CROWN);
+        foreach ($civs as $civ)
+        {
+            $actions[] = $this->createAction($civ->getPlayer(), self::ACTION_BICYCLETTE_2);
+        }
+        
+        return $actions;
+    }
+    
+    public function bicyclette2(Civilization $civilization)
+    {
+        $this->exchangeSets($civilization, $civilization->getHand(), $civilization->getInfluence());
+    }
+
+    public function moteur_a_explosion(Civilization $civilization)
+    {
+        $actions = array();
+        $civs = $this->getDominatedCivs($civilization, Card::RESOURCE_CROWN);
+        foreach ($civs as $civ)
+        {
+            $actions[] = $this->createAction($civ->getPlayer(), self::ACTION_TRANSFER, array(
+                'card' => array(
+                    'type' => 'callback',
+                    'method' => 'cardFromInfluence',
+                ),
+            ))->setRequired(true)
+            ->setExtraDatas(array(
+                'civilization' => $civilization->getId(),
+                'target' => 'influence',
+            ));
+            $actions[] = $this->createAction($civ->getPlayer(), self::ACTION_TRANSFER, array(
+                'card' => array(
+                    'type' => 'callback',
+                    'method' => 'cardFromInfluence',
+                ),
+            ))->setRequired(true)
+            ->setExtraDatas(array(
+                'civilization' => $civilization->getId(),
+                'target' => 'influence',
+            ));
+        }
+        
+        return $actions;
+    }
     
     // AGE 8
+    
+    
+    
     // AGE 9
+
+    
+    
     // AGE 10
 }

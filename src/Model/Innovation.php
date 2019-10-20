@@ -140,10 +140,17 @@ class Innovation
                             return $stack->getTopElement();
                         }, $state->getPlayerCivilization($action->getPlayer())->getStacks()), true);
         }
+        if ($action->getName() === State::ACTION_REARRANGE_STACK){
+            return $action->isDeclined() || $state->validateStackRearrangement($action->getPlayer(), $action->getParams());
+        }
+        if ($action->getName() === State::ACTION_RECYCLE_MANY){
+            return $action->isDeclined() || $state->validateRecycleMany($action->getParams()['cards'], $action->getExtraData('cards'));
+        }
         if (count($action->getChoices()) > 0) {
             return array_reduce(array_keys($action->getChoices()), function($carry, $choice) use($action, $state) {
                 return $carry &&
-                    (array_key_exists($choice, $action->getParams()) && $state->validateActionChoice($action->getPlayer(), $action->getParams()[$choice], $action->getChoices()[$choice], $action->isDeclined()) || $choice === 'name' && in_array($action->getName(), $action->getChoices()['name']['choices'])
+                    (array_key_exists($choice, $action->getParams()) && $state->validateActionChoice($action->getPlayer(), $action->getParams()[$choice], $action->getChoices()[$choice], $action->isDeclined())
+                        || $choice === 'name' && in_array($action->getName(), $action->getChoices()['name']['choices'])
                     );
             }, true);
         } else
