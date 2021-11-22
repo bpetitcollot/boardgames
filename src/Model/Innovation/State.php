@@ -542,6 +542,20 @@ class State
         }, $cards);
     }
 
+    public function cardFromOpponentInfluence(Civilization $civilization, $filters = array())
+    {
+        $cards = array_map(function($civ) use ($filters){
+            $this->applyCardChoiceFilters($civ, $civ->getInfluence()->getElements(), $filters);
+        }, array_filter($this->civilizations, function($civ) use ($civilization){
+            return $civilization->getId() !== $civ->getId();
+        }));
+
+        return array_map(function($card)
+        {
+            return $card->getName();
+        }, $cards);
+    }
+
     public function cardActiveCiv(Civilization $civilization, $filters = array())
     {
         return $this->cardActive($this->getCivilization($filters['civilization']), $filters);
@@ -3531,7 +3545,54 @@ class State
     
     // AGE 8
     
+    public function theorie_quantique(Civilization $civilization)
+    {
+        $actions = array();
+        $civs = $this->getUndominatedCivs($civilization, Card::RESOURCE_CLOCK);
+        foreach ($civs as $civ)
+        {
+            $civ->clearRecycled();
+            $actions[] = $this->createAction($civ->getPlayer(), self::ACTION_RECYCLE, array(
+                'card' => array(
+                    'type' => 'callback',
+                    'method' => 'cardFromHand',
+                ),
+            ))->addChild($this->createAction($civ->getPlayer(), self::ACTION_RECYCLE, array(
+                'card' => array(
+                    'type' => 'callback',
+                    'method' => 'cardFromHand',
+                )))->setExtraDatas(array(self::ACTION_PARAM_NO_DECLINE => true))
+                    ->addChild($this->createAction($civ->getPlayer(), self::ACTION_DRAW_TO_HAND, array(
+                        'age' => 10,
+                    ))->setExtraDatas(array(self::ACTION_PARAM_NO_DECLINE => true))
+                        ->addChild($this->createAction($civ->getPlayer(), self::ACTION_DRAW_AND_SCORE, array(
+                            'age' => 10,
+                        ))
+                    )
+                )
+            );
+        }
+        
+        return $actions;
+    }
     
+    public function fusees(Civilization $civilization)
+    {
+        $actions = array();
+        $civs = $this->getUndominatedCivs($civilization, Card::RESOURCE_CLOCK);
+        foreach ($civs as $civ)
+        {
+            for ($i = 1; $i <= $civ->countResources()[Card::RESOURCE_CLOCK]; $i++)
+            {
+                $actions[] = $this->createAction($civ->getPlayer(), self::ACTION_RECYCLE, array(
+                    'card' => array(
+                        'type' => 'callback',
+                        'method' => 'cardFromOpponentInfluence',
+                    ),
+                ));
+            }
+        }
+    }
     
     // AGE 9
 

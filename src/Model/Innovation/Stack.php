@@ -75,7 +75,6 @@ class Stack extends Set
      */
     public function rearrange($arrangement)
     {
-        dump($this->elements, $arrangement);
         $ranks = array_keys($this->elements);
         if (count(array_filter($arrangement, function($value, $key) use($ranks){
             return !in_array($value, $ranks) || !in_array($key, $ranks);
@@ -85,7 +84,6 @@ class Stack extends Set
             return $this->elements[$rank];
         }, array_flip($arrangement));
         ksort($this->elements);
-        dump($this->elements);
     }
     
     public function countResources()
