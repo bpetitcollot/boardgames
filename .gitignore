@@ -1,6 +1,7 @@
 
 ###> symfony/framework-bundle ###
 /.env
+/.env.test
 /public/bundles/
 /var/
 /vendor/
@@ -17,3 +18,7 @@
 
 ### netbeans ###
 /nbproject/
+###> phpunit/phpunit ###
+/phpunit.xml
+.phpunit.result.cache
+###< phpunit/phpunit ###

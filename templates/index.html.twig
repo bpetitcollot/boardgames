@@ -4,7 +4,7 @@
     <h1>Jeux</h1>
     {% for boardgame in boardgames %}
         <p>
-            <a href="{{ path('boardgame_index', {'slug': boardgame.slug}) }}">{{ boardgame.title }}</a>
+            <a href="{{ path('innovation_index') }}">{{ boardgame.title }}</a>
         </p>
     {% endfor %}
     {{ form_start(form) }}

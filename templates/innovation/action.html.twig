@@ -7,7 +7,7 @@
     {% endif %}
     {% set actionsRoot = action.parent %}
     {% if actionsRoot.parent == null %}
-        <a href="{{ path('game_action_reset', {'slug': game.boardgame.slug, 'game': game.id, 'action': action.id}) }}">&times;</a>
+        <a href="{{ path('innovation_game_action_reset', {'gameId': game.id, 'actionId': action.id}) }}">&times;</a>
     {% endif %}
     {% if action.children|length > 0 %}
         <ul>

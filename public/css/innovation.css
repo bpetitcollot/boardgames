@@ -27,3 +27,24 @@ body{
     border: 1px solid grey;
     padding: 0 1em;
 }
+
+.stack.color-0{
+    border-color: darkred;
+    background-color: pink;
+}
+.stack.color-1{
+    border-color: darkblue;
+    background-color: lightblue;
+}
+.stack.color-2{
+    border-color: darkgreen;
+    background-color: lightgreen;
+}
+.stack.color-3{
+    border-color: orange;
+    background-color: beige;
+}
+.stack.color-4{
+    border-color: purple;
+    background-color: plum;
+}

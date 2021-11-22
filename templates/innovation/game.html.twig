@@ -10,12 +10,32 @@
         input[type="text"], textarea{
             width: 100%;
         }
+        .stack.color-0{
+            border-color: darkred;
+            background-color: pink;
+        }
+        .stack.color-1{
+            border-color: darkblue;
+            background-color: lightblue;
+        }
+        .stack.color-2{
+            border-color: darkgreen;
+            background-color: lightgreen;
+        }
+        .stack.color-3{
+            border-color: orange;
+            background-color: beige;
+        }
+        .stack.color-4{
+            border-color: purple;
+            background-color: plum;
+        }
     </style>
 {% endblock %}
 
 {% block body %}{{ parent() }}
     <div style="width: 20%; float: left;">
-        <h1><a href="{{ path('boardgame_index', {'slug': game.boardgame.slug}) }}">{{ game.boardgame.title }}</a></h1>
+        <h1><a href="{{ path('innovation_index') }}">{{ game.boardgame.title }}</a></h1>
         <h2>Partie {{ game.id }}</h2>
         <div id="ages">
             <h3>Ages</h3>
@@ -39,7 +59,7 @@
                 <thead>
                     <tr>
                         <th>joueur</th>
-                        <th>pierre</th>
+                        <th>tour</th>
                         <th>arbre</th>
                         <th>couronne</th>
                         <th>ampoule</th>
@@ -100,7 +120,7 @@
                     <div class="stacks">
                         <p>piles</p>
                         {% for color, stack in civilization.stacks %}
-                            <div class="stack">
+                            <div class="stack color-{{ color }}">
                                 <p>
                                     {{ stack.name }}
                                     ({{ ['n','l','r','t'][stack.getSplay] }})

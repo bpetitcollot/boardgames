@@ -13,17 +13,17 @@
         {% for game in games %}
             <li>
                 {% if game.isStarted %}
-                    <a href="{{ path('game_show', {'slug': game.boardgame.slug, 'game': game.id}) }}">{{ game.title }}</a>
+                    <a href="{{ path('innovation_game_show', {'gameId': game.id}) }}">{{ game.title }}</a>
                 {% else %}
                     {{ game.title }}
                 {% endif %}
                 {% if not game.playedBy(app.user) and game.isJoinable %}
-                    <a href="{{ path('game_join', {'game': game.id}) }}">Rejoindre</a>
+                    <a href="{{ path('innovation_game_join', {'gameId': game.id}) }}">Rejoindre</a>
                 {% endif %}
                 {% if game.playedBy(app.user) and not game.isStarted %}
-                    <a href="{{ path('game_leave', {'game': game.id}) }}">Quitter</a>
+                    <a href="{{ path('innovation_game_leave', {'gameId': game.id}) }}">Quitter</a>
                 {% endif %}
-                <a href="{{ path('game_reinit', {'game': game.id}) }}">Redémarrer</a>
+                <a href="{{ path('innovation_game_reinit', {'gameId': game.id}) }}">Redémarrer</a>
             </li>
         {% endfor %}
     </ul>

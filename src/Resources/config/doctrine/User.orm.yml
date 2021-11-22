@@ -6,4 +6,27 @@ App\Entity\User:
             type: integer
             generator:
                 strategy: AUTO
-                
+    fields:
+        username:
+            type: string
+            length: 255
+        email:
+            type: string
+            length: 255
+        password:
+            type: string
+            length: 255
+        enabled:
+            type: boolean
+        lastLogin:
+            type: datetime
+            nullable: true
+        confirmationToken:
+            type: string
+            length: 255
+            nullable: true
+        passwordRequestedAt:
+            type: datetime
+            nullable: true
+        roles:
+            type: array

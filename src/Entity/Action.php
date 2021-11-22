@@ -88,7 +88,7 @@ class Action
     {
         return $this->children;
     }
-
+    
     public function addChild($action)
     {
         if (!$this->children->contains($action)) {
