@@ -78,7 +78,9 @@
         }
     },
     "require-dev": {
+        "symfony/debug-bundle": "7.2.*",
         "symfony/stopwatch": "7.2.*",
+        "symfony/var-dumper": "7.2.*",
         "symfony/web-profiler-bundle": "7.2.*"
     }
 }

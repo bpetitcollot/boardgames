@@ -9,10 +9,10 @@ use App\Entity\Player;
 use App\Entity\User;
 use App\Form\GameType;
 use App\Repository\GameRepository;
+use App\Solitaire\Manager;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
-use Symfony\Component\HttpFoundation\RequestStack;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;
 use Symfony\Component\Routing\Attribute\Route;
@@ -28,22 +28,17 @@ class SolitaireController extends AbstractController
     private EntityManagerInterface $entityManager;
     private UserPasswordHasherInterface $passwordHasher;
     private GameRepository $gameRepository;
+    private Manager $gameManager;
 
     public function __construct(
-        RequestStack                $requestStack,
-        SerializerInterface         $serializer,
-        ValidatorInterface          $validator,
         EntityManagerInterface      $entityManager,
-        UserPasswordHasherInterface $passwordHasher,
         GameRepository $gameRepository,
+        Manager $gameManager
     )
     {
-        $this->request = $requestStack->getCurrentRequest();
-        $this->serializer = $serializer;
-        $this->validator = $validator;
         $this->entityManager = $entityManager;
-        $this->passwordHasher = $passwordHasher;
         $this->gameRepository = $gameRepository;
+        $this->gameManager = $gameManager;
     }
 
     #[Route('/', name: 'home')]
@@ -56,6 +51,7 @@ class SolitaireController extends AbstractController
         $form->handleRequest($request);
         if ($this->getUser() instanceof User && $form->isSubmitted() && $form->isValid()) {
             $game = new Game(Boardgame::Solitaire, $createGame->name, 1);
+            $game->setState($this->gameManager->createInitialState());
             $game->setCreatedBy($this->getUser());
             $player = new Player($game, $this->getUser());
             $this->entityManager->persist($game);
@@ -68,6 +64,29 @@ class SolitaireController extends AbstractController
         return $this->render('solitaire/index.html.twig', [
             'games' => $games,
             'form' => $form->createView(),
+        ]);
+    }
+    #[Route('/{id}/delete', name: 'delete', requirements: ['id'=>'\w+'])]
+    public function deleteGame(string $id): Response
+    {
+        $game = $this->gameRepository->find($id);
+        if ($game->getCreatedBy() !== $this->getUser()) {
+            $this->denyAccessUnlessGranted('ROLE_ADMIN');
+        }
+
+        $this->entityManager->remove($game);
+        $this->entityManager->flush();
+
+        return $this->redirectToRoute('solitaire_home');
+    }
+    #[Route('/{id}', name: 'show', requirements: ['id'=>'\w+'])]
+    public function showGame(string $id): Response
+    {
+        $game = $this->gameRepository->find($id);
+
+        return $this->render('solitaire/show.html.twig', [
+            'game' => $game,
+            'solitaire' => $this->gameManager->createSolitaireFromGame($game),
         ]);
     }
 }

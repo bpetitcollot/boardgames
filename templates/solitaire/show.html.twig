@@ -1,0 +1,21 @@
+{% extends 'layout.html.twig' %}
+
+{% block body %}
+    {{ parent() }}
+    <h1>Jeux de société</h1>
+
+    <h2>Solitaire</h2>
+
+    <h3>{{ game.name }}</h3>
+
+    <div style="display: grid; grid-template-columns: repeat(9, 1fr); width: 9em;">
+        {% for row in solitaire.grid %}
+            {% for cell in row %}
+                <div style="width: 1em; height: 1em; border-radius: .5em; background-color: {{ cell == 0 ? 'none' : (cell == 1 ? 'gray' : 'orange') }};"></div>
+            {% endfor %}
+        {% endfor %}
+    </div>
+
+    <p>{{ game.state|json_encode }}</p>
+    
+{% endblock %}

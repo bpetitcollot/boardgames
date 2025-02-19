@@ -18,14 +18,20 @@
             <td>Titre</td>
             <td>Joueur</td>
             <td>Statut</td>
+            <td>actions</td>
         </tr>
         </thead>
         <tbody>
         {% for game in games %}
         <tr>
-            <td>{{ game.name }}</td>
+            <td>
+                <a href="{{ path('solitaire_show', {'id': game.id}) }}">{{ game.name }}</a>
+            </td>
             <td>{{ game.players[0].user.username }}</td>
             <td>-</td>
+            <td>
+                <a href="{{ path('solitaire_delete', {'id': game.id}) }}">supprimer</a>
+            </td>
         </tr>
         {% endfor %}
         </tbody>
