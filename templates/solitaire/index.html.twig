@@ -1,0 +1,35 @@
+{% extends 'layout.html.twig' %}
+
+{% block body %}
+    {{ parent() }}
+    <h1>Jeux de société</h1>
+
+    <h2>Solitaire</h2>
+
+    <h3>Parties</h3>
+    <button>Nouvelle</button>
+    {{ form_start(form) }}
+    {{ form_widget(form) }}
+    <button>Créer</button>
+    {{ form_end(form) }}
+    <table>
+        <thead>
+        <tr>
+            <td>Titre</td>
+            <td>Joueur</td>
+            <td>Statut</td>
+        </tr>
+        </thead>
+        <tbody>
+        {% for game in games %}
+        <tr>
+            <td>{{ game.name }}</td>
+            <td>{{ game.players[0].user.username }}</td>
+            <td>-</td>
+        </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+
+
+{% endblock %}

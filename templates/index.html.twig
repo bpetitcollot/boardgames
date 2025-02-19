@@ -1,0 +1,31 @@
+{% extends 'layout.html.twig' %}
+
+{% block body %}
+    {{ parent() }}
+    <h1>Jeux de société</h1>
+
+    <h2>Jeux</h2>
+    <p><a href="/solitaire">Solitaire</a></p>
+    <p><a href="#">Dames</a></p>
+    <p><a href="#">Innovation</a></p>
+
+    <h2>Parties</h2>
+    <table>
+        <thead>
+        <tr>
+            <td>Jeu</td>
+            <td>Joueurs</td>
+            <td>Statut</td>
+        </tr>
+        </thead>
+        <tbody>
+        <tr>
+            <td></td>
+            <td></td>
+            <td></td>
+        </tr>
+        </tbody>
+    </table>
+
+
+{% endblock %}

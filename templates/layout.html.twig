@@ -1,0 +1,15 @@
+{% extends 'base.html.twig' %}
+
+{% block body %}
+    <nav>
+        Polpoul.com
+        {% if app.user %}
+            {{ app.user.username }}
+            <a href="/deconnexion">Deconnexion</a>
+        {% else %}
+            <a href="/connexion">Connexion</a>
+            <a href="/inscription">S'inscrire</a>
+        {% endif %}
+    </nav>
+
+{% endblock %}

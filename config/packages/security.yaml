@@ -13,10 +13,11 @@ security:
         main:
             lazy: true
             provider: app_user_provider
-            json_login:
-                check_path: login
+            form_login:
+                login_path: app_login
+                check_path: app_login
             logout:
-                path: /logout
+                path: /deconnexion
 
     access_control:
          - { path: ^/test, roles: PUBLIC_ACCESS }

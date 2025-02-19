@@ -4,23 +4,18 @@ namespace App\Controller;
 
 use App\Command\Register;
 use App\Entity\User;
-use App\Form\RegisterType;
-use Cassandra\Type\UserType;
 use Doctrine\ORM\EntityManagerInterface;
-use Doctrine\ORM\Mapping\Entity;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\RequestStack;
-use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Security\Http\Attribute\CurrentUser;
-use Symfony\Component\Security\Http\Authentication\AuthenticationUtils;
 use Symfony\Component\Serializer\SerializerInterface;
 use Symfony\Component\Validator\Validator\ValidatorInterface;
 
-class UserController extends AbstractController
+class ApiUserController extends AbstractController
 {
     private Request $request;
     private SerializerInterface $serializer;
@@ -43,35 +38,39 @@ class UserController extends AbstractController
         $this->passwordHasher = $passwordHasher;
     }
 
-    #[Route('/user/me', name: 'app_current_user')]
+    #[Route('/api/user/me', name: 'api_current_user')]
     public function getCurrentUser(): JsonResponse
     {
         return $this->json($this->getUser(), context: ['groups' => 'public-view']);
     }
-    #[Route('/inscription', name: 'app_register', methods: ['GET', 'POST'])]
-    public function register(Request $request, EntityManagerInterface $entityManager): Response
+    #[Route('/api/register', name: 'api_register', methods: ['POST'])]
+    public function register(): JsonResponse
     {
-        $register = new Register();
-        $form = $this->createForm(RegisterType::class, $register);
-        $form->handleRequest($request);
-        if ($form->isSubmitted() && $form->isValid()) {
-            $user = new User($register->email, $register->username);
-            $user->setPassword($this->passwordHasher->hashPassword($user, $register->plainPassword));
-            $entityManager->persist($user);
-            $entityManager->flush();
+        $command = $this->serializer->deserialize($this->request->getContent(), Register::class, 'json');
+        $errors = $this->validator->validate($command);
+        if (count($errors) > 0) {
+            return $this->json(['errors' => $errors], 400);
         }
 
-        return $this->render('user/register.html.twig', [
-            'form' => $form->createView(),
+        $user = new User($command->email, $command->username);
+        $user->setPassword($this->passwordHasher->hashPassword($user, $command->plainPassword));
+        $this->entityManager->persist($user);
+        $this->entityManager->flush();
+
+        return $this->json([
+            'user' => $this->serializer->normalize($user, null, ['groups' => 'public-view']),
         ]);
     }
 
-    #[Route('/connexion', name: 'app_login')]
-    public function login(AuthenticationUtils $authenticationUtils): Response
+    #[Route('/api/login', name: 'api_login', methods: ['POST'])]
+    public function login(#[CurrentUser] ?User $user): JsonResponse
     {
-        return $this->render('user/login.html.twig', [
-            'last_username' => $authenticationUtils->getLastUsername(),
-            'error'         => $authenticationUtils->getLastAuthenticationError(),
-        ]);
+        if ($user === null) {
+            return $this->json(['errors' => 'missing credentials'], 401);
+        }
+
+        $user->setLastLoginAt(new \DateTime());
+
+        return $this->json($this->serializer->normalize($user));
     }
 }

@@ -2,8 +2,8 @@
 
 namespace App\Entity;
 
-use App\Repository\UserRepository;
 use Doctrine\DBAL\Types\Types;
+use App\Repository\UserRepository;
 use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\Security\Core\User\PasswordAuthenticatedUserInterface;
 use Symfony\Component\Security\Core\User\UserInterface;
@@ -30,9 +30,9 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     private bool $enabled = true;
     #[ORM\Column(type: Types::JSON)]
     private array $roles;
-    #[ORM\Column(type: Types::DATETIME_MUTABLE)]
+    #[ORM\Column(type: Types::DATETIME_IMMUTABLE)]
     #[Groups('public-view')]
-    private \DateTime $createdAt;
+    private \DateTimeImmutable $createdAt;
     #[ORM\Column(type: Types::DATETIME_MUTABLE, nullable: true)]
     private ?\DateTime $lastLoginAt;
 
@@ -42,7 +42,7 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
         $this->email = $email;
         $this->username = $username;
         $this->roles = [self::ROLE_USER];
-        $this->createdAt = new \DateTime();
+        $this->createdAt = new \DateTimeImmutable();
     }
 
     public function getId(): string
@@ -83,7 +83,7 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
         return $this;
     }
 
-    public function getCreatedAt(): \DateTime
+    public function getCreatedAt(): \DateTimeImmutable
     {
         return $this->createdAt;
     }
