@@ -8,14 +8,33 @@
 
     <h3>{{ game.name }}</h3>
 
-    <div style="display: grid; grid-template-columns: repeat(9, 1fr); width: 9em;">
-        {% for row in solitaire.grid %}
-            {% for cell in row %}
-                <div style="width: 1em; height: 1em; border-radius: .5em; background-color: {{ cell == 0 ? 'none' : (cell == 1 ? 'gray' : 'orange') }};"></div>
-            {% endfor %}
-        {% endfor %}
+    {% if game.state.isFinished %}
+        <p>Partie terminée</p>
+    {% endif %}
+
+    <div style="display: inline-block;">
+        <div id="root"></div>
     </div>
 
-    <p>{{ game.state|json_encode }}</p>
-    
+
+{% endblock %}
+
+{% block javascripts %}
+    {% block importmap %}{{ importmap('solitaire') }}{% endblock %}
+    <script type="module">
+        import React from 'react';
+        import {createRoot} from 'react-dom/client';
+        import {Solitaire} from 'solitaire';
+        const actionsString = '{{ game.state.actions }}';
+        function postAction(actionString){
+            return fetch('/solitaire/{{ game.id }}/action', {
+                method: 'POST',
+                body: JSON.stringify({action: actionString})
+            }).then(res => res.ok ? res.json() : null);
+        }
+        function onGameFinished(){
+            window.location.reload();
+        }
+        createRoot(document.getElementById('root')).render(React.createElement(Solitaire, {actionsString, postAction, onGameFinished}));
+    </script>
 {% endblock %}

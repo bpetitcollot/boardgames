@@ -12,21 +12,15 @@ use App\Repository\GameRepository;
 use App\Solitaire\Manager;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
+use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
-use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;
 use Symfony\Component\Routing\Attribute\Route;
-use Symfony\Component\Serializer\SerializerInterface;
-use Symfony\Component\Validator\Validator\ValidatorInterface;
 
 #[Route('/solitaire', name: 'solitaire_')]
 class SolitaireController extends AbstractController
 {
-    private Request $request;
-    private SerializerInterface $serializer;
-    private ValidatorInterface $validator;
     private EntityManagerInterface $entityManager;
-    private UserPasswordHasherInterface $passwordHasher;
     private GameRepository $gameRepository;
     private Manager $gameManager;
 
@@ -88,5 +82,30 @@ class SolitaireController extends AbstractController
             'game' => $game,
             'solitaire' => $this->gameManager->createSolitaireFromGame($game),
         ]);
+    }
+    #[Route('/{id}/action', name: 'add_action', methods: ['POST'], requirements: ['id'=>'\w+'])]
+    public function addAction(Request $request, string $id): JsonResponse
+    {
+        $game = $this->gameRepository->find($id);
+
+        // get posted action
+        $data = json_decode($request->getContent(), true);
+        $move = $this->gameManager->deserializeAction($data['action']);
+        // validate action
+        $solitaire = $this->gameManager->createSolitaireFromGame($game);
+        if (!$solitaire->validate($move)){
+            return new JsonResponse(['error' => 'action is not valid'], Response::HTTP_BAD_REQUEST);
+        }
+        // apply action
+        try {
+            $solitaire->applyMove($move);
+        } catch (\Exception $e) {
+            return new JsonResponse(['error' => $e->getMessage()], Response::HTTP_BAD_REQUEST);
+        }
+        // store new action
+        $game->setState($this->gameManager->createGameStateFromSolitaire($solitaire));
+        $this->entityManager->flush();
+
+        return $this->json($game->getState());
     }
 }
